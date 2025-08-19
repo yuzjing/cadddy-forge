@@ -48,6 +48,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
 
       # 第4步：构建并推送镜像
       # 这是核心步骤，它将执行 `docker build` 和 `docker push`
