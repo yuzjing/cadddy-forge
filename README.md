@@ -1,6 +1,6 @@
 # caddy-forge
 
-[![Build Custom Caddy Image](https://github.com/yuzjing/cadddy-forge/actions/workflows/build-caddy-image.yml/badge.svg)](https://github.com/yuzjing/cadddy-forge/actions/workflows/build-caddy-image.yml)
+[简体中文](README.zh-cn.md)
 
 This repository contains an automated setup to build a custom, feature-rich [Caddy](https://caddyserver.com/) server image using GitHub Actions. The resulting image is pushed to GitHub Container Registry (GHCR) and is ready for use with Docker or Podman.
 
