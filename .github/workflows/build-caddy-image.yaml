@@ -14,9 +14,8 @@ on:
       - 'Dockerfile'
       - '.github/workflows/build-caddy-image.yml'
 
-    # 新增：定时触发，每周日凌晨2点 (UTC) 自动运行
-    schedule:
-      - cron: '0 2 * * 0'
+  schedule:
+    - cron: '0 2 * * 0'
 
 jobs:
   build-and-push:
@@ -30,12 +29,10 @@ jobs:
 
     steps:
       # 第1步：检出代码
-      # 此步骤会下载你的仓库代码，以便工作流可以访问 Dockerfile
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # 第2步：登录到 GitHub Container Registry (GHCR)
-      # docker/login-action 是一个官方维护的 Action，用于登录到各种容器仓库
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -46,7 +43,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # 第3步：提取 Docker 元数据
-      # 这个 Action 会自动为你的镜像生成合适的标签，例如 'latest', 'v1.2.3' 等
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -57,7 +53,6 @@ jobs:
             type=ref,event=branch
 
       # 第4步：构建并推送镜像
-      # 这是核心步骤，它将执行 `docker build` 和 `docker push`
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
