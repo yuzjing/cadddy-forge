@@ -2,82 +2,79 @@
 
 [简体中文](README.zh-cn.md)
 
-This repository contains an automated setup to build a custom, feature-rich [Caddy](https://caddyserver.com/) server image using GitHub Actions. The resulting image is pushed to GitHub Container Registry (GHCR) and is ready for use with Docker or Podman.
+A custom Caddy image with useful plugins, built automatically via GitHub Actions.
 
-The primary goal is to create a personalized Caddy instance "forged" with a specific set of plugins required for my personal projects.
+### Features
+
+-   **Automated Updates**: Weekly workflow checks for new versions of Caddy and all included plugins. If updates are found, it automatically builds and pushes a new image.
+-   **Curated Plugins**: Includes plugins for DNS challenges, response caching, and security.
+-   **Published to GHCR**: Images are available on the GitHub Container Registry.
 
 ## Included Plugins
 
-This Caddy image is compiled with the following plugins to extend its core functionality:
-
-- **[caddy-dns/cloudflare](https://github.com/caddy-dns/cloudflare)**
-  - Enables Caddy to use Cloudflare's DNS for solving ACME DNS-01 challenges. Essential for obtaining wildcard SSL/TLS certificates without exposing port 80.
-
-- **[caddyserver/cache-handler](https://github.com/caddyserver/cache-handler)**
-  - A powerful response caching middleware. Great for improving performance by caching static assets or API responses at the edge.
-
-- **[greenpau/caddy-security](https://github.com/greenpau/caddy-security)**
-  - A comprehensive security plugin providing features like IP filtering, GeoIP filtering, and more advanced authentication methods.
-
-- **[caddyserver/transform-encoder](https://github.com/caddyserver/transform-encoder)**
-  - An encoding module that can modify response bodies on the fly, for example, to inject scripts or replace text.
+-   **[caddy-dns/cloudflare](https://github.com/caddy-dns/cloudflare)**: Solves ACME DNS-01 challenges using Cloudflare for wildcard certificates.
+-   **[caddyserver/cache-handler](https://github.com/caddyserver/cache-handler)**: A powerful middleware for caching responses.
+-   **[greenpau/caddy-security](https://github.com/greenpau/caddy-security)**: Provides authentication, authorization, and access control features.
 
 ## Usage
 
 ### 1. Pull the Image
 
-The image is publicly available on GHCR. You can pull it using Podman or Docker.
-
 ```bash
-# Replace 'latest' with a specific version if needed
 podman pull ghcr.io/yuzjing/caddy-forge:latest
 ```
 
 ### 2. Run the Container
 
-Here is a sample `podman run` command. You will need to provide your `Caddyfile` and a Cloudflare API token.
-
 ```bash
-# Create directories for configuration and data
-mkdir -p ./caddy/config
-mkdir -p ./caddy/data
+# Create directories and a Caddyfile
+mkdir -p ./caddy/{config,data}
 touch ./caddy/Caddyfile
 
-# Set your Cloudflare API Token as an environment variable
-export CLOUDFLARE_API_TOKEN="your_cloudflare_api_token_here"
-
-# Run the container
+# Run the container with your Cloudflare token
 podman run -d \
     --name caddy \
     --restart unless-stopped \
     -p 80:80 \
     -p 443:443 \
     -p 443:443/udp \
-    -v $(pwd)/caddy/config:/etc/caddy \
+    -v $(pwd)/caddy/Caddyfile:/etc/caddy/Caddyfile \
     -v $(pwd)/caddy/data:/data \
-    -e CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN} \
+    -e CLOUDFLARE_API_TOKEN="your_cloudflare_api_token" \
     ghcr.io/yuzjing/caddy-forge:latest
 ```
+_Note: For production, consider using a `.env` file instead of passing secrets directly._
 
-### Example `Caddyfile`
-
-Remember to configure the `acme_dns` global option to use the Cloudflare plugin.
+### 3. Example Caddyfile
 
 ```caddy
 {
-    # Use the Cloudflare DNS plugin for certificate acquisition
+    # Use Cloudflare for ACME DNS challenges
     acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 }
 
 your.domain.com {
-    # Your site configuration here
+    # Example: Block an IP address
+    security {
+        block ip 192.0.2.1
+    }
+
+    # Example: Cache static assets for 2 hours
+    route /static/* {
+        cache {
+            expire 2h
+        }
+    }
+
     reverse_proxy my-backend-service:8080
 }
 ```
 
 ## Customization
 
-You can easily fork this repository to build your own custom Caddy image:
+Fork this repository to build your own image.
+
 1.  **Fork the repository.**
-2.  **Edit the `Dockerfile`**: Add or remove plugins in the `RUN xcaddy build ...` command.
-3.  **Push the changes**: GitHub Actions will automatically build and push the new image to your own container registry.
+2.  Edit the `Dockerfile` to add or remove `--with` plugin lines.
+3.  Update `versions.yml` to match the plugins in your `Dockerfile`.
+4.  Push changes to your `main` branch. The Action will build and push the image to your own GHCR.

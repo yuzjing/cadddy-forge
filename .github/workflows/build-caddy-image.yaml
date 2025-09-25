@@ -1,65 +1,115 @@
 name: Build and Push Custom Caddy Image
 
-# 定义工作流的触发条件
 on:
-  # 允许在 GitHub Actions 页面手动触发此工作流
   workflow_dispatch:
-  
-  # 当有代码推送到 'main' 分支时触发
   push:
     branches:
       - 'main'
-    # 仅当 Dockerfile 或此工作流文件本身发生变化时才运行
     paths:
       - 'Dockerfile'
       - '.github/workflows/build-caddy-image.yml'
-
+      - 'versions.yaml'
   schedule:
     - cron: '0 2 * * 5'
 
 jobs:
   build-and-push:
-    # 使用最新的 Ubuntu 虚拟机运行任务
     runs-on: ubuntu-latest
-    
-    # 授予工作流写入 GitHub Packages (GHCR) 的权限
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
-      # 第1步：检出代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 第2步：登录到 GitHub Container Registry (GHCR)
+      - name: Install yq
+        uses: mikefarah/yq@v4.44.1
+
+      # 仅在定时任务触发时，才检查上游版本
+      - name: Check for upstream updates (Resilient Method)
+        if: github.event_name == 'schedule'
+        id: version_check
+        run: |
+          echo "Scheduled run: Checking for new versions with resilient method..."
+          REPOS=$(yq 'keys | .[]' versions.yml)
+          cp versions.yml new_versions.yml
+          NEEDS_UPDATE="false"
+
+          for REPO in $REPOS; do
+            echo "--- Checking repository: $REPO ---"
+            
+            # 策略1：优先尝试获取最新的 "Release"
+            LATEST_TAG=$(curl -s -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases/latest" | yq -r .tag_name)
+            
+            # 策略2：如果获取 Release 失败，则回退到获取最新的 "Tag"
+            if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+              echo "No formal release found for $REPO. Falling back to checking tags."
+              LATEST_TAG=$(curl -s -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/tags" | yq -r '.[0].name')
+            else
+              echo "Found latest release: $LATEST_TAG"
+            fi
+            
+            # 最终检查，如果两种方法都失败，则跳过
+            if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+              echo "WARNING: Could not determine latest version for $REPO. Skipping."
+              continue
+            fi
+            
+            CURRENT_TAG=$(yq ".$REPO" versions.yml)
+            
+            echo "Comparison for $REPO: Current is '$CURRENT_TAG', Latest is '$LATEST_TAG'"
+            if [ "$LATEST_TAG" != "$CURRENT_TAG" ]; then
+              echo "  -> New version found for $REPO!"
+              NEEDS_UPDATE="true"
+              yq -i ".$REPO = \"$LATEST_TAG\"" new_versions.yml
+            fi
+          done
+
+          if [ "$NEEDS_UPDATE" = "true" ]; then
+            echo "Changes detected! Proceeding with build."
+          else
+            echo "No new versions found. Skipping build."
+          fi
+          
+          echo "needs_update=$NEEDS_UPDATE" >> $GITHUB_OUTPUT
+
+      # 构建
       - name: Log in to the Container registry
+        if: github.event_name != 'schedule' || steps.version_check.outputs.needs_update == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          # github.actor 是触发工作流的用户名
           username: ${{ github.actor }}
-          # GITHUB_TOKEN 是由 GitHub Actions 自动生成的、具有适当权限的临时令牌
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 第3步：提取 Docker 元数据
       - name: Extract metadata (tags, labels) for Docker
+        if: github.event_name != 'schedule' || steps.version_check.outputs.needs_update == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
+            type=sha,prefix=,format=short
 
-      # 第4步：构建并推送镜像
       - name: Build and push Docker image
+        if: github.event_name != 'schedule' || steps.version_check.outputs.needs_update == 'true'
         uses: docker/build-push-action@v5
         with:
-          # context: . 表示 Dockerfile 位于仓库根目录
           context: .
-          # push: true 表示构建成功后将镜像推送到仓库
           push: true
-          # 使用上一步生成的元数据作为镜像的标签
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Update and commit version file
+        if: github.event_name == 'schedule' && steps.version_check.outputs.needs_update == 'true'
+        run: |
+          mv new_versions.yml versions.yml
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add versions.yml
+          if ! git diff --staged --quiet; then
+            git commit -m "ci: Update upstream dependency versions"
+            git push
+          fi
