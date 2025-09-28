@@ -7,7 +7,7 @@ on:
       - 'main'
     paths:
       - 'Dockerfile'
-      - '.github/workflows/build-caddy-image.yml'
+      - '.github/workflows/build-caddy-image.yaml'
       - 'versions.yaml'
   schedule:
     - cron: '0 2 * * 5'
@@ -32,8 +32,8 @@ jobs:
         id: version_check
         run: |
           echo "Scheduled run: Checking for new versions with resilient method..."
-          REPOS=$(yq 'keys | .[]' versions.yml)
-          cp versions.yml new_versions.yml
+          REPOS=$(yq 'keys | .[]' versions.yaml)
+          cp versions.yaml new_versions.yaml
           NEEDS_UPDATE="false"
 
           for REPO in $REPOS; do
@@ -56,13 +56,13 @@ jobs:
               continue
             fi
             
-            CURRENT_TAG=$(yq ".$REPO" versions.yml)
+            CURRENT_TAG=$(yq ".$REPO" versions.yaml)
             
             echo "Comparison for $REPO: Current is '$CURRENT_TAG', Latest is '$LATEST_TAG'"
             if [ "$LATEST_TAG" != "$CURRENT_TAG" ]; then
               echo "  -> New version found for $REPO!"
               NEEDS_UPDATE="true"
-              yq -i ".$REPO = \"$LATEST_TAG\"" new_versions.yml
+              yq -i ".$REPO = \"$LATEST_TAG\"" new_versions.yaml
             fi
           done
 
@@ -105,10 +105,10 @@ jobs:
       - name: Update and commit version file
         if: github.event_name == 'schedule' && steps.version_check.outputs.needs_update == 'true'
         run: |
-          mv new_versions.yml versions.yml
+          mv new_versions.yaml versions.yaml
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add versions.yml
+          git add versions.yaml
           if ! git diff --staged --quiet; then
             git commit -m "ci: Update upstream dependency versions"
             git push
