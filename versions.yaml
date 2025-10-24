@@ -1,6 +1,6 @@
 # 这个文件用于记录上一次构建时使用的上游依赖版本
 # 可以通过 'yq' 工具进行读写
 caddyserver/caddy: v2.10.2
-caddy-dns/cloudflare: v0.2.1
+caddy-dns/cloudflare: v0.2.2
 caddyserver/cache-handler: v0.16.0
 greenpau/caddy-security: v1.1.31
