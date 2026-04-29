@@ -21,10 +21,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install yq
-        uses: mikefarah/yq@v4.44.1
+        uses: mikefarah/yq@v4
 
       
       - name: Check for upstream updates (Resilient Method)
