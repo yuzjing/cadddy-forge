@@ -104,7 +104,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Update and commit version file
-        if: github.event_name == 'schedule' && steps.version_check.outputs.needs_update == 'true'
+        if: steps.version_check.outputs.needs_update == 'true'
         run: |
           mv new_versions.yaml versions.yaml
           git config --global user.name 'github-actions[bot]'
