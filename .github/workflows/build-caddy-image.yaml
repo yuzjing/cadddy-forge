@@ -26,10 +26,10 @@ jobs:
       - name: Install yq
         uses: mikefarah/yq@v4.44.1
 
-      # 仅在定时任务触发时，才检查上游版本
+      
       - name: Check for upstream updates (Resilient Method)
-        # 修改这里：允许 schedule 或 workflow_dispatch
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+  
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         id: version_check
         run: |
           echo "Scheduled run: Checking for new versions with resilient method..."
