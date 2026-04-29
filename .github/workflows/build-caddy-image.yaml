@@ -28,7 +28,8 @@ jobs:
 
       # 仅在定时任务触发时，才检查上游版本
       - name: Check for upstream updates (Resilient Method)
-        if: github.event_name == 'schedule'
+        # 修改这里：允许 schedule 或 workflow_dispatch
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         id: version_check
         run: |
           echo "Scheduled run: Checking for new versions with resilient method..."
