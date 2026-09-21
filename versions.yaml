@@ -2,5 +2,5 @@
 # 可以通过 'yq' 工具进行读写
 caddyserver/caddy: v2.11.4
 caddy-dns/cloudflare: v0.2.4
-caddyserver/cache-handler: v0.16.0
-greenpau/caddy-security: v1.1.64
+caddyserver/cache-handler: v0.17.0
+greenpau/caddy-security: v1.2.1
