@@ -3,4 +3,4 @@
 caddyserver/caddy: v2.11.4
 caddy-dns/cloudflare: v0.2.4
 caddyserver/cache-handler: v0.17.0
-greenpau/caddy-security: v1.2.1
+greenpau/caddy-security: v1.2.2
